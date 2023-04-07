@@ -3043,19 +3043,21 @@ namespace wiScene
 			for (Entity boneEntity : armature.boneCollection)
 			{
 				const TransformComponent& bone = *transforms.GetComponent(boneEntity);
+				if ( &bone) //PE: Got a crash here bone not found.
+				{
+					XMMATRIX B = XMLoadFloat4x4(&armature.inverseBindMatrices[boneIndex]);
+					XMMATRIX W = XMLoadFloat4x4(&bone.world);
+					XMMATRIX M = B * W * R;
 
-				XMMATRIX B = XMLoadFloat4x4(&armature.inverseBindMatrices[boneIndex]);
-				XMMATRIX W = XMLoadFloat4x4(&bone.world);
-				XMMATRIX M = B * W * R;
+					armature.boneData[boneIndex++].Store(M);
 
-				armature.boneData[boneIndex++].Store(M);
-
-				const float bone_radius = 1;
-				XMFLOAT3 bonepos = bone.GetPosition();
-				AABB boneAABB;
-				boneAABB.createFromHalfWidth(bonepos, XMFLOAT3(bone_radius, bone_radius, bone_radius));
-				_min = wiMath::Min(_min, boneAABB._min);
-				_max = wiMath::Max(_max, boneAABB._max);
+					const float bone_radius = 1;
+					XMFLOAT3 bonepos = bone.GetPosition();
+					AABB boneAABB;
+					boneAABB.createFromHalfWidth(bonepos, XMFLOAT3(bone_radius, bone_radius, bone_radius));
+					_min = wiMath::Min(_min, boneAABB._min);
+					_max = wiMath::Max(_max, boneAABB._max);
+				}
 			}
 
 			armature.aabb = AABB(_min, _max);
