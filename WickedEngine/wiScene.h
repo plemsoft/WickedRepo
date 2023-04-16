@@ -252,6 +252,9 @@ namespace wiScene
 		inline BLENDMODE GetBlendMode() const { if (userBlendMode == BLENDMODE_OPAQUE && (GetRenderTypes() & RENDERTYPE_TRANSPARENT)) return BLENDMODE_ALPHA; else return userBlendMode; }
 		inline bool IsCastingShadow() const { return _flags & CAST_SHADOW; }
 		inline bool IsAlphaTestEnabled() const { return alphaRef <= 1.0f - 1.0f / 256.0f; }
+#ifdef GGREDUCED
+		inline float GetAlphaRef() const { return alphaRef; }
+#endif
 		inline bool IsUsingVertexColors() const { return _flags & USE_VERTEXCOLORS; }
 		inline bool IsUsingWind() const { return _flags & USE_WIND; }
 		inline bool IsReceiveShadow() const { return (_flags & DISABLE_RECEIVE_SHADOW) == 0; }
@@ -1340,11 +1343,24 @@ namespace wiScene
 
 		// Environment probe cubemap array state:
 		static constexpr uint32_t envmapCount = 16;
+#ifdef GGREDUCED
+		uint32_t envmapRes = 128;
+		uint32_t envmapNewRes = 128;
+#else
 		static constexpr uint32_t envmapRes = 128;
+#endif
 		static constexpr uint32_t envmapMIPs = 8;
 		wiGraphics::Texture envrenderingDepthBuffer;
 		wiGraphics::Texture envmapArray;
 		std::vector<wiGraphics::RenderPass> renderpasses_envmap;
+
+#ifdef GGREDUCED
+		void SetEnvProbeResolution (uint32_t iSize)
+		{
+			// Wicked Not Entirely Support Changing This (For Now)!
+			envmapNewRes = iSize;
+		}
+#endif
 
 		// Impostor texture array state:
 		static constexpr uint32_t maxImpostorCount = 8;
