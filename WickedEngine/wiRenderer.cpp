@@ -127,6 +127,11 @@ namespace GGTerrain
 	extern "C" void GGTerrain_Draw_EnvProbe( const SPHERE* culler, const Frustum* frusta, uint32_t frustum_count, wiGraphics::CommandList cmd );
 	extern "C" void __GGTerrain_Draw_EnvProbe_EMPTY( const SPHERE* culler, const Frustum* frusta, uint32_t frustum_count, wiGraphics::CommandList cmd ) {}
 	#pragma comment(linker, "/alternatename:GGTerrain_Draw_EnvProbe=__GGTerrain_Draw_EnvProbe_EMPTY")
+
+	//extern "C" bool GGTerrain_ConvertToDDS(uint8_t* ImageData, int width, int height, int channels, Texture* pTexture,const std::string& name);
+	//extern "C" bool __GGTerrain_ConvertToDDS_EMPTY(uint8_t* ImageData, int width, int height, int channels, Texture* pTexture,const std::string& name) { return false; }
+	//#pragma comment(linker, "/alternatename:GGTerrain_ConvertToDDS=__GGTerrain_ConvertToDDS_EMPTY")
+
 }
 
 namespace GGTrees

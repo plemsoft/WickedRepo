@@ -42,6 +42,7 @@ namespace wiResourceManager
 		EMPTY = 0,
 		IMPORT_COLORGRADINGLUT = 1 << 0, // image import will convert resource to 3D color grading LUT
 		IMPORT_RETAIN_FILEDATA = 1 << 1, // file data will be kept for later reuse. This is necessary for keeping the resource serializable
+		IMPORT_CONVERT_TO_DDS = 1 << 2,
 	};
 
 #ifdef GGREDUCED
