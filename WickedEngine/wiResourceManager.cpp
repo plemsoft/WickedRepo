@@ -10,6 +10,13 @@
 
 using namespace wiGraphics;
 
+namespace GGTerrain
+{
+	extern "C" bool GGTerrain_ConvertToDDS(uint8_t* ImageData, int width, int height, int channels, Texture* pTexture, const std::string& name);
+	extern "C" bool __GGTerrain_ConvertToDDS_EMPTY(uint8_t* ImageData, int width, int height, int channels, Texture* pTexture, const std::string& name) { return false; }
+	#pragma comment(linker, "/alternatename:GGTerrain_ConvertToDDS=__GGTerrain_ConvertToDDS_EMPTY")
+}
+
 namespace wiResourceManager
 {
 	std::mutex locker;
@@ -330,33 +337,47 @@ namespace wiResourceManager
 					}
 					else
 					{
-						desc.BindFlags = BIND_SHADER_RESOURCE | BIND_UNORDERED_ACCESS;
-						desc.CPUAccessFlags = 0;
-						desc.Format = FORMAT_R8G8B8A8_UNORM;
-						desc.MipLevels = (uint32_t)log2(std::max(width, height)) + 1;
-						desc.MiscFlags = 0;
-						desc.Usage = USAGE_DEFAULT;
-						desc.layout = IMAGE_LAYOUT_SHADER_RESOURCE;
-
-						uint32_t mipwidth = width;
-						std::vector<SubresourceData> InitData(desc.MipLevels);
-						for (uint32_t mip = 0; mip < desc.MipLevels; ++mip)
+						bool bConvertFailed = true;
+						if (flags & IMPORT_CONVERT_TO_DDS)
 						{
-							InitData[mip].pSysMem = rgb; // attention! we don't fill the mips here correctly, just always point to the mip0 data by default. Mip levels will be created using compute shader when needed!
-							InitData[mip].SysMemPitch = static_cast<uint32_t>(mipwidth * channelCount);
-							mipwidth = std::max(1u, mipwidth / 2);
+							//PE: Convert to DDS
+							success = GGTerrain::GGTerrain_ConvertToDDS(rgb, width, height, channelCount, &resource->texture, name);
+							if (success)
+							{
+								device->SetName(&resource->texture, name.c_str());
+								bConvertFailed = false;
+							}
 						}
-
-						success = device->CreateTexture(&desc, InitData.data(), &resource->texture);
-						device->SetName(&resource->texture, name.c_str());
-
-						for (uint32_t i = 0; i < resource->texture.desc.MipLevels; ++i)
+						if(bConvertFailed)
 						{
-							int subresource_index;
-							subresource_index = device->CreateSubresource(&resource->texture, SRV, 0, 1, i, 1);
-							assert(subresource_index == i);
-							subresource_index = device->CreateSubresource(&resource->texture, UAV, 0, 1, i, 1);
-							assert(subresource_index == i);
+							desc.BindFlags = BIND_SHADER_RESOURCE | BIND_UNORDERED_ACCESS;
+							desc.CPUAccessFlags = 0;
+							desc.Format = FORMAT_R8G8B8A8_UNORM;
+							desc.MipLevels = (uint32_t)log2(std::max(width, height)) + 1;
+							desc.MiscFlags = 0;
+							desc.Usage = USAGE_DEFAULT;
+							desc.layout = IMAGE_LAYOUT_SHADER_RESOURCE;
+
+							uint32_t mipwidth = width;
+							std::vector<SubresourceData> InitData(desc.MipLevels);
+							for (uint32_t mip = 0; mip < desc.MipLevels; ++mip)
+							{
+								InitData[mip].pSysMem = rgb; // attention! we don't fill the mips here correctly, just always point to the mip0 data by default. Mip levels will be created using compute shader when needed!
+								InitData[mip].SysMemPitch = static_cast<uint32_t>(mipwidth * channelCount);
+								mipwidth = std::max(1u, mipwidth / 2);
+							}
+
+							success = device->CreateTexture(&desc, InitData.data(), &resource->texture);
+							device->SetName(&resource->texture, name.c_str());
+
+							for (uint32_t i = 0; i < resource->texture.desc.MipLevels; ++i)
+							{
+								int subresource_index;
+								subresource_index = device->CreateSubresource(&resource->texture, SRV, 0, 1, i, 1);
+								assert(subresource_index == i);
+								subresource_index = device->CreateSubresource(&resource->texture, UAV, 0, 1, i, 1);
+								assert(subresource_index == i);
+							}
 						}
 					}
 				}
