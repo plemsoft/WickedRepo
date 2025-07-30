@@ -290,6 +290,7 @@ std::vector<std::pair<XMFLOAT4X4, XMFLOAT4>> renderableBoxes;
 std::vector<std::pair<SPHERE, XMFLOAT4>> renderableSpheres;
 std::vector<std::pair<CAPSULE, XMFLOAT4>> renderableCapsules;
 std::vector<RenderableLine> renderableLines;
+std::vector<RenderableLine> renderableLinesDepth;
 std::vector<RenderableLine2D> renderableLines2D;
 std::vector<RenderablePoint> renderablePoints;
 std::vector<RenderableTriangle> renderableTriangles_solid;
@@ -7346,7 +7347,7 @@ void DrawDebugWorld(
 	static GPUBuffer wirecubeIB;
 
 #ifdef GGREDUCED
-	if (renderableLines.empty() && renderableBoxes.empty() && renderableCapsules.empty() && !debugEnvProbes && !debugBoneLines) //PE: We only use these, so no need to BindCommonResources... if we have nothing.
+	if (renderableLines.empty() && renderableLinesDepth.empty() &&  renderableBoxes.empty() && renderableCapsules.empty() && !debugEnvProbes && !debugBoneLines) //PE: We only use these, so no need to BindCommonResources... if we have nothing.
 		return;
 #endif
 
@@ -7697,6 +7698,56 @@ void DrawDebugWorld(
 		device->Draw(2 * i, 0, cmd);
 
 		renderableLines.clear();
+
+		device->EventEnd(cmd);
+	}
+
+	if (!renderableLinesDepth.empty())
+	{
+		device->EventBegin("DebugLinesDepth", cmd);
+
+		device->BindPipelineState(&PSO_debug[DEBUGRENDERING_LINES2], cmd);
+
+		MiscCB sb;
+		XMStoreFloat4x4(&sb.g_xTransform, camera.GetViewProjection());
+		sb.g_xColor = XMFLOAT4(1, 1, 1, 1);
+		device->UpdateBuffer(&constantBuffers[CBTYPE_MISC], &sb, cmd);
+		device->BindConstantBuffer(VS, &constantBuffers[CBTYPE_MISC], CB_GETBINDSLOT(MiscCB), cmd);
+		device->BindConstantBuffer(PS, &constantBuffers[CBTYPE_MISC], CB_GETBINDSLOT(MiscCB), cmd);
+
+		struct LineSegment
+		{
+			XMFLOAT4 a, colorA, b, colorB;
+		};
+		GraphicsDevice::GPUAllocation mem = device->AllocateGPU(sizeof(LineSegment) * renderableLinesDepth.size(), cmd);
+
+		int i = 0;
+		for (auto& line : renderableLinesDepth)
+		{
+			LineSegment segment;
+			segment.a = XMFLOAT4(line.start.x, line.start.y, line.start.z, 1);
+			segment.b = XMFLOAT4(line.end.x, line.end.y, line.end.z, 1);
+			segment.colorA = line.color_start;
+			segment.colorB = line.color_end;
+
+			memcpy((void*)((size_t)mem.data + i * sizeof(LineSegment)), &segment, sizeof(LineSegment));
+			i++;
+		}
+
+		const GPUBuffer* vbs[] = {
+			mem.buffer,
+		};
+		const uint32_t strides[] = {
+			sizeof(XMFLOAT4) + sizeof(XMFLOAT4),
+		};
+		const uint32_t offsets[] = {
+			mem.offset,
+		};
+		device->BindVertexBuffers(vbs, 0, arraysize(vbs), strides, offsets, cmd);
+
+		device->Draw(2 * i, 0, cmd);
+
+		renderableLinesDepth.clear();
 
 		device->EventEnd(cmd);
 	}
@@ -14517,6 +14568,10 @@ void DrawCapsule(const CAPSULE& capsule, const XMFLOAT4& color)
 void DrawLine(const RenderableLine& line)
 {
 	renderableLines.push_back(line);
+}
+void DrawLineDepth(const RenderableLine& line)
+{
+	renderableLinesDepth.push_back(line);
 }
 void DrawLine(const RenderableLine2D& line)
 {

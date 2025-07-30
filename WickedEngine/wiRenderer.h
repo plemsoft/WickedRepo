@@ -822,6 +822,7 @@ namespace wiRenderer
 	};
 	// Add line to render in the next frame. It will be rendered in DrawDebugWorld()
 	void DrawLine(const RenderableLine& line);
+	void DrawLineDepth(const RenderableLine& line);
 
 	struct RenderableLine2D
 	{
