@@ -1809,6 +1809,8 @@ void RenderPath3D::RenderTransparents(CommandList cmd, int mode) const
 		auto particlerange = wiProfiler::BeginRangeGPU("Particles - Init Render", cmd);
 		GPUParticles::gpup_draw_init(wiScene::GetCamera(), cmd);
 		wiProfiler::EndRange(particlerange);
+
+		wiRenderer::DrawSoftParticles_Init(visibility_main, rtLinearDepth, false, cmd);
 #endif
 
 		uint32_t drawscene_flags = 0;
@@ -1823,6 +1825,9 @@ void RenderPath3D::RenderTransparents(CommandList cmd, int mode) const
 		Tracers::tracer_draw(wiScene::GetCamera(), cmd);
 
 		GPUParticles::gpup_draw_bydistance(wiScene::GetCamera(), cmd, 0.0f);
+
+		wiRenderer::DrawSoftParticles_Distance(visibility_main, false, cmd,0.0f);
+
 		// repair constant buffers changed by particle shader
 		//BindCommonResources(cmd);
 		//BindConstantBuffers(VS, cmd);
@@ -1899,8 +1904,9 @@ void RenderPath3D::RenderTransparents(CommandList cmd, int mode) const
 	#endif
 
 	#ifndef REMOVE_WICKED_PARTICLE
-	wiRenderer::DrawSoftParticles(visibility_main, rtLinearDepth, false, cmd);
-	#endif
+	wiRenderer::DrawSoftParticles_Done(visibility_main, rtLinearDepth, false, cmd);
+	//wiRenderer::DrawSoftParticles(visibility_main, rtLinearDepth, false, cmd);
+#endif
 	#ifdef GGREDUCED
 	//PE: strange things happen when placed above, moved here, draw order looks fine.
 	//GPUParticles::gpup_draw(wiScene::GetCamera(), cmd); moved further up and incorporated into the DrawScene as particles need to be rendered back to front WITH other transparent objects (ie. window, window, particle, window)

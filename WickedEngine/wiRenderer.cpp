@@ -299,6 +299,7 @@ std::vector<PaintRadius> paintrads;
 
 wiSpinLock deferredMIPGenLock;
 std::vector<std::pair<std::shared_ptr<wiResource>, bool>> deferredMIPGens;
+wiSpinLock particleLock;
 
 
 bool volumetric_clouds_precomputed = false;
@@ -3530,9 +3531,12 @@ void RenderMeshes(
 						float fDistanceFromCamera = (float)instancedBatch.paddingnickedfordistance;
 						//float distance = wiMath::Distance(instancedBatch.aabb.getCenter(), vis.camera->Eye); // aabb empty :(
 						GPUParticles::gpup_draw_bydistance(wiScene::GetCamera(), cmd, fDistanceFromCamera);
+
 						//BindCommonResources(cmd);
 						BindConstantBuffers(VS, cmd);
 						BindConstantBuffers(PS, cmd);
+
+						wiRenderer::DrawSoftParticles_Distance(vis, false, cmd, fDistanceFromCamera);
 					}
 				}
 #endif
@@ -6045,6 +6049,147 @@ void DrawWaterRipples(const Visibility& vis, CommandList cmd)
 	device->EventEnd(cmd);
 }
 
+uint32_t emitterSortingHashes[8192];
+bool emitterUsed[8192] = { false };
+size_t emitterCount = 0;
+size_t emitterCountStart = 0;
+uint8_t cmdStart = 0;
+uint32_t currentemitter = 0;
+wiProfiler::range_id range_particle = 0;
+Texture linearparticledepth;
+
+void DrawSoftParticles_Done(
+	const Visibility& vis,
+	const Texture& lineardepth,
+	bool distortion,
+	CommandList cmd
+)
+{
+	if (emitterCount == 0)
+	{
+		return;
+	}
+	if(range_particle != 0)
+		wiProfiler::EndRange(range_particle);
+}
+
+void DrawSoftParticles_Init(
+	const Visibility& vis,
+	const Texture& lineardepth,
+	bool distortion,
+	CommandList cmd
+)
+{
+	emitterCountStart = emitterCount = vis.visibleEmitters.size();
+	cmdStart = cmd;
+	if (emitterCount == 0)
+	{
+		return;
+	}
+
+	linearparticledepth = (Texture) lineardepth;
+
+	if (emitterCount > 4095) //PE: MAX emitters.
+		emitterCount = 4095;
+
+	assert(emitterCount < 0x00000FFF); // watch out for sorting hash truncation!
+
+	for (size_t i = 0; i < emitterCount; ++i)
+	{
+		emitterUsed[i] = false;
+		const uint32_t emitterIndex = vis.visibleEmitters[i];
+		const wiEmittedParticle& emitter = vis.scene->emitters[emitterIndex];
+		float distance = wiMath::DistanceEstimated(emitter.center, vis.camera->Eye) + emitter.distance_sort_bias;
+		if (distance < 0)
+		{
+			if (emitter.distance_sort_bias < 0)
+				distance = 0;
+			else
+				distance = 1;
+		}
+		emitterSortingHashes[i] = 0;
+		emitterSortingHashes[i] |= (uint32_t)i & 0x00000FFF;
+		emitterSortingHashes[i] |= ((uint32_t)(distance * 2.0f) & 0x000FFFFF) << 12;
+	}
+	std::sort(emitterSortingHashes, emitterSortingHashes + emitterCount, std::greater<uint32_t>());
+	currentemitter = 0;
+	range_particle = 0;
+
+#ifdef GGREDUCED
+	range_particle = distortion ?
+		wiProfiler::BeginRangeGPU("WParticles Emitted - Render (Distortion)", cmd) :
+		wiProfiler::BeginRangeGPU("WParticles Emitted - Render", cmd);
+#else
+	range_particle = distortion ?
+		wiProfiler::BeginRangeGPU("EmittedParticles - Render (Distortion)", cmd) :
+		wiProfiler::BeginRangeGPU("EmittedParticles - Render", cmd);
+#endif
+}
+
+void DrawSoftParticles_Distance(
+	const Visibility& vis,
+	bool distortion,
+	CommandList cmd,
+	float distance
+)
+{
+	if (emitterCount == 0 || cmdStart != cmd)
+	{
+		return;
+	}
+
+	particleLock.lock();
+
+	if (emitterCount > 4095) //PE: MAX emitters.
+		emitterCount = 4095;
+
+	int iLoopStart = currentemitter;
+	if (distance == 0) //PE: Render all notused.
+		iLoopStart = 0;
+	bool bRenderStarted = false;
+	for (size_t i = iLoopStart; i < emitterCount; ++i)
+	{
+		if (emitterUsed[i]) continue;
+		float dist = (float) ((uint32_t) (emitterSortingHashes[i] & 0xFFFFF000) >> 12) * 0.5f;
+		if (dist > distance || distance == 0)
+		{
+			//PE: Draw it.
+			currentemitter = i + 1;
+		}
+		else
+		{
+			//PE: Skip.
+			particleLock.unlock();
+			return;
+		}
+		if (!bRenderStarted)
+		{
+			//PE: repair constant buffers changed by particle shader gpup_draw_bydistance
+			//BindCommonResources(cmd);
+			BindConstantBuffers(VS, cmd);
+			BindConstantBuffers(PS, cmd);
+			device->BindResource(PS, &linearparticledepth, TEXSLOT_LINEARDEPTH, cmd);
+			bRenderStarted = true;
+		}
+		const uint32_t emitterIndex = vis.visibleEmitters[emitterSortingHashes[i] & 0x00000FFF];
+		const wiEmittedParticle& emitter = vis.scene->emitters[emitterIndex];
+		const Entity entity = vis.scene->emitters.GetEntity(emitterIndex);
+		const MaterialComponent& material = *vis.scene->materials.GetComponent(entity);
+
+		if (distortion && emitter.shaderType == wiEmittedParticle::SOFT_DISTORTION)
+		{
+			emitterUsed[i] = true;
+			emitter.Draw(*vis.camera, material, cmd);
+		}
+		else if (!distortion && (emitter.shaderType == wiEmittedParticle::SOFT || emitter.shaderType == wiEmittedParticle::SOFT_LIGHTING || emitter.shaderType == wiEmittedParticle::SIMPLE || IsWireRender()))
+		{
+			emitterUsed[i] = true;
+			emitter.Draw(*vis.camera, material, cmd);
+		}
+	}
+	particleLock.unlock();
+
+}
 
 
 void DrawSoftParticles(
@@ -6119,6 +6264,7 @@ void DrawSoftParticles(
 
 	wiProfiler::EndRange(range);
 }
+
 void DrawLightVisualizers(
 	const Visibility& vis,
 	CommandList cmd
