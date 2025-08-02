@@ -3299,6 +3299,8 @@ void RenderMeshes(
 		if (renderPass == RENDERPASS_MAIN && renderTypeFlags & RENDERTYPE_TRANSPARENT)
 		{
 			GPUParticles::gpup_draw_bydistance(wiScene::GetCamera(), cmd, 0.0f);
+			//wiRenderer::DrawSoftParticles_Distance(vis, false, cmd, 0.0f);
+
 			// repair constant buffers changed by particle shader
 			//BindCommonResources(cmd);
 			BindConstantBuffers(VS, cmd);
@@ -6186,6 +6188,7 @@ void DrawSoftParticles_Distance(
 			emitterUsed[i] = true;
 			emitter.Draw(*vis.camera, material, cmd);
 		}
+
 	}
 	particleLock.unlock();
 
@@ -9052,6 +9055,7 @@ void RefreshEnvProbes(const Visibility& vis, CommandList cmd)
 				cb.filterArrayIndex = arrayIndex;
 				cb.filterRoughness = (float)i / (float)desc.MipLevels;
 				cb.filterRayCount = 128;
+				cb.filterBrightness = probe.filterBrightness;
 				device->UpdateBuffer(&constantBuffers[CBTYPE_FILTERENVMAP], &cb, cmd);
 				device->BindConstantBuffer(CS, &constantBuffers[CBTYPE_FILTERENVMAP], CB_GETBINDSLOT(FilterEnvmapCB), cmd);
 

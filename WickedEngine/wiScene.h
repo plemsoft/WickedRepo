@@ -1018,9 +1018,10 @@ namespace wiScene
 		XMFLOAT4X4 inverseMatrix;
 		mutable bool render_dirty = false;
 		uint32_t userdata = 0;
-
+		float filterBrightness = 1.0f;
 		inline void SetDirty(bool value = true) { if (value) { _flags |= DIRTY; } else { _flags &= ~DIRTY; } }
 		inline void SetRealTime(bool value) { if (value) { _flags |= REALTIME; } else { _flags &= ~REALTIME; } }
+		inline void SetBrightness(float value) { filterBrightness = value; }
 
 		inline bool IsDirty() const { return _flags & DIRTY; }
 		inline bool IsRealTime() const { return _flags & REALTIME; }
