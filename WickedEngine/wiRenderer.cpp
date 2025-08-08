@@ -2994,6 +2994,16 @@ void Initialize()
 	SetShadowPropsCube(SHADOWRES_CUBE, SHADOWCOUNT_CUBE);
 	SetShadowPropsSpot2D(SHADOWRES_SPOT_2D, SHADOWCOUNT_SPOT_2D);
 
+	static uint32_t maxerrors = 1;
+	void timestampactivity(int i, char* desc_s);
+	if (maxerrors > 0)
+	{
+		maxerrors--;
+		char debug[MAX_PATH];
+		sprintf(debug, "wiRenderer Initialized");
+		timestampactivity(0, debug);
+	}
+
 	wiBackLog::post("wiRenderer Initialized");
 }
 void ClearWorld(Scene& scene)
