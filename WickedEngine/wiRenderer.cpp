@@ -37,6 +37,7 @@
 #endif
 #endif
 
+#define REMOVE_DEBUGUAV
 #define ENABLE_TRANSPARENT_SHADOWS
 #define DELAYEDSHADOWS //PE: sometimes (rare) one cascade display all black, think i need to use the same shcam everywhere ?
 #ifdef SHADERCOMPILER
@@ -3932,6 +3933,7 @@ void RenderMeshes(
 		device->EventEnd(cmd);
 }
 
+#ifndef GGREDUCED
 void RenderImpostors(
 	const Visibility& vis,
 	RENDERPASS renderPass, 
@@ -4007,6 +4009,7 @@ void RenderImpostors(
 		device->EventEnd(cmd);
 	}
 }
+#endif
 
 void ProcessDeferredMipGenRequests(CommandList cmd)
 {
@@ -4366,7 +4369,7 @@ void UpdateVisibility(Visibility& vis, float maxApparentSize)
 			}
 			});
 	}
-
+#ifndef GGREDUCED
 	if (vis.flags & Visibility::ALLOW_HAIRS)
 	{
 		wiJobSystem::Execute(ctx, [&](wiJobArgs args) {
@@ -4386,6 +4389,7 @@ void UpdateVisibility(Visibility& vis, float maxApparentSize)
 			}
 			});
 	}
+#endif
 
 	if (vis.flags & Visibility::ALLOW_LIGHTS)
 	{
@@ -5561,6 +5565,7 @@ void UpdateRenderData(
 		wiProfiler::EndRange(range);
 	}
 
+#ifndef GGREDUCED
 	// Hair particle systems GPU simulation:
 	if (!vis.visibleHairs.empty())
 	{
@@ -5580,6 +5585,7 @@ void UpdateRenderData(
 		}
 		wiProfiler::EndRange(range);
 	}
+#endif
 
 	// Compute water simulation:
 	if (vis.scene->weather.IsOceanEnabled())
@@ -6557,19 +6563,25 @@ void SetShadowProps2D(int resolution, int count)
 		desc.MiscFlags = 0;
 
 		desc.BindFlags = BIND_DEPTH_STENCIL | BIND_SHADER_RESOURCE;
+
+		//HIGH - FORMAT_R32_TYPELESS MEDIUM LOW - FORMAT_R16_TYPELESS
+		//HIGT FORMAT_R16G16B16A16_FLOAT - MEDIUM FORMAT_R8G8B8A8_UNORM - LOW FORMAT_R4G4B4A4_UNORM
+
 		desc.Format = FORMAT_R32_TYPELESS;
 		desc.layout = IMAGE_LAYOUT_SHADER_RESOURCE;
 		device->CreateTexture(&desc, nullptr, &shadowMapArray_2D);
 
 #ifdef ENABLE_TRANSPARENT_SHADOWS
+		desc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
+		desc.Format = FORMAT_R16G16B16A16_FLOAT;
 		if (!GetTransparentShadowsEnabled())
 		{
 			//PE: To actual release a old we need to setup a new, so just use a small size RTV.
 			desc.Width = 16;
 			desc.Height = 16;
+			desc.Format = FORMAT_R8G8B8A8_UNORM;
 		}
-		desc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
-		desc.Format = FORMAT_R16G16B16A16_FLOAT;
+
 		desc.layout = IMAGE_LAYOUT_SHADER_RESOURCE;
 		desc.clear.color[0] = 1;
 		desc.clear.color[1] = 1;
@@ -6655,18 +6667,23 @@ void SetShadowPropsSpot2D(int resolution, int count)
 		desc.MiscFlags = 0;
 
 		desc.BindFlags = BIND_DEPTH_STENCIL | BIND_SHADER_RESOURCE;
+
+		//HIGH - FORMAT_R32_TYPELESS MEDIUM LOW - FORMAT_R16_TYPELESS
+		//HIGT FORMAT_R16G16B16A16_FLOAT - MEDIUM FORMAT_R8G8B8A8_UNORM - LOW FORMAT_R4G4B4A4_UNORM
+
 		desc.Format = FORMAT_R32_TYPELESS;
 		desc.layout = IMAGE_LAYOUT_SHADER_RESOURCE;
 		device->CreateTexture(&desc, nullptr, &shadowMapArray_Spot_2D);
 
 #ifdef ENABLE_TRANSPARENT_SHADOWS
+		desc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
+		desc.Format = FORMAT_R16G16B16A16_FLOAT;
 		if (!GetTransparentShadowsEnabled())
 		{
 			desc.Width = 16;
 			desc.Height = 16;
+			desc.Format = FORMAT_R8G8B8A8_UNORM;
 		}
-		desc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
-		desc.Format = FORMAT_R16G16B16A16_FLOAT;
 		desc.layout = IMAGE_LAYOUT_SHADER_RESOURCE;
 		desc.clear.color[0] = 1;
 		desc.clear.color[1] = 1;
@@ -6751,18 +6768,22 @@ void SetShadowPropsCube(int resolution, int count)
 		desc.MiscFlags = RESOURCE_MISC_TEXTURECUBE;
 
 		desc.BindFlags = BIND_DEPTH_STENCIL | BIND_SHADER_RESOURCE;
+		//HIGH - FORMAT_R32_TYPELESS MEDIUM LOW - FORMAT_R16_TYPELESS
 		desc.Format = FORMAT_R32_TYPELESS;//LB: fixes issue of point light shadow gap and tearing (more mem yes but higher quality, maybe on a flag?) -  FORMAT_R16_TYPELESS; //PE: Test FORMAT_R32_TYPELESS;
 		desc.layout = IMAGE_LAYOUT_SHADER_RESOURCE;
 		device->CreateTexture(&desc, nullptr, &shadowMapArray_Cube);
 
+
+		//HIGT FORMAT_R16G16B16A16_FLOAT - MEDIUM FORMAT_R8G8B8A8_UNORM - LOW FORMAT_R4G4B4A4_UNORM
 #ifdef ENABLE_TRANSPARENT_SHADOWS
+		desc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
+		desc.Format = FORMAT_R16G16B16A16_FLOAT;
 		if (!GetTransparentShadowsEnabled())
 		{
 			desc.Width = 16;
 			desc.Height = 16;
+			desc.Format = FORMAT_R8G8B8A8_UNORM;
 		}
-		desc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
-		desc.Format = FORMAT_R16G16B16A16_FLOAT;
 		desc.layout = IMAGE_LAYOUT_SHADER_RESOURCE;
 		desc.clear.color[0] = 1;
 		desc.clear.color[1] = 1;
@@ -7376,7 +7397,7 @@ void DrawScene(
 		vis.scene->ocean.Render(*vis.camera, vis.scene->weather.oceanParameters, cmd);
 	}
 #endif
-
+#ifndef GGREDUCED
 	if (hairparticle)
 	{
 		if (!transparent)
@@ -7391,11 +7412,12 @@ void DrawScene(
 			}
 		}
 	}
-
+#endif
 	if (IsWireRender() && !transparent)
 		return;
-
+#ifndef GGREDUCED
 	RenderImpostors(vis, renderPass, cmd);
+#endif
 
 	uint32_t renderTypeFlags = 0;
 	if (opaque)
@@ -9125,7 +9147,7 @@ void RefreshEnvProbes(const Visibility& vis, CommandList cmd)
 	//wiProfiler::EndRange(range);
 	device->EventEnd(cmd); // EnvironmentProbe Refresh
 }
-
+#ifndef GGREDUCED
 void RefreshImpostors(const Scene& scene, CommandList cmd)
 {
 	if (!scene.impostorArray.IsValid())
@@ -9291,6 +9313,7 @@ void RefreshImpostors(const Scene& scene, CommandList cmd)
 
 	device->EventEnd(cmd);
 }
+#endif
 
 void VoxelRadiance(const Visibility& vis, CommandList cmd)
 {
@@ -9517,13 +9540,14 @@ void ComputeTiledLightCulling(
 		device->EventBegin("Entity Culling", cmd);
 
 		device->BindResource(CS, &res.tileFrustums, TEXSLOT_ONDEMAND0, cmd);
-
+#ifndef REMOVE_DEBUGUAV
 		if (GetDebugLightCulling() && debugUAV.IsValid())
 		{
 			device->BindComputeShader(&shaders[GetAdvancedLightCulling() ? CSTYPE_LIGHTCULLING_ADVANCED_DEBUG : CSTYPE_LIGHTCULLING_DEBUG], cmd);
 			device->BindUAV(CS, &debugUAV, 3, cmd);
 		}
 		else
+#endif
 		{
 			device->BindComputeShader(&shaders[GetAdvancedLightCulling() ? CSTYPE_LIGHTCULLING_ADVANCED : CSTYPE_LIGHTCULLING], cmd);
 		}
@@ -10384,7 +10408,7 @@ void ComputeShadingRateClassification(
 {
 	device->EventBegin("ComputeShadingRateClassification", cmd);
 	auto range = wiProfiler::BeginRangeGPU("ComputeShadingRateClassification", cmd);
-
+#ifndef REMOVE_DEBUGUAV
 	if (GetVariableRateShadingClassificationDebug())
 	{
 		device->BindUAV(CS, &debugUAV, 1, cmd);
@@ -10399,6 +10423,7 @@ void ComputeShadingRateClassification(
 		device->BindComputeShader(&shaders[CSTYPE_SHADINGRATECLASSIFICATION_DEBUG], cmd);
 	}
 	else
+#endif
 	{
 		device->BindComputeShader(&shaders[CSTYPE_SHADINGRATECLASSIFICATION], cmd);
 	}
@@ -10442,7 +10467,7 @@ void ComputeShadingRateClassification(
 		};
 		device->Barrier(barriers, arraysize(barriers), cmd);
 	}
-
+#ifndef REMOVE_DEBUGUAV
 	if (GetVariableRateShadingClassificationDebug())
 	{
 		{
@@ -10452,6 +10477,7 @@ void ComputeShadingRateClassification(
 			device->Barrier(barriers, arraysize(barriers), cmd);
 		}
 	}
+#endif
 
 	device->UnbindUAVs(0, arraysize(uavs), cmd);
 

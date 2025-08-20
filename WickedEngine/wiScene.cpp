@@ -1725,9 +1725,10 @@ namespace wiScene
 #else
 		RunHierarchyUpdateSystem(ctx);
 #endif
-
+#ifndef GGREDUCED
 		RunSpringUpdateSystem(ctx);
 		RunInverseKinematicsUpdateSystem(ctx);
+#endif
 		RunArmatureUpdateSystem(ctx);
 
 #ifndef MTHREAD_HIERARCHY
@@ -1736,7 +1737,9 @@ namespace wiScene
 		RunMaterialUpdateSystem(ctx);
 #endif
 
+#ifndef GGREDUCED
 		RunImpostorUpdateSystem(ctx);
+#endif
 		RunWeatherUpdateSystem(ctx);
 
 #ifndef GGREDUCED
@@ -2211,6 +2214,7 @@ namespace wiScene
 
 		return entity;
 	}
+#ifndef GGREDUCED
 	Entity Scene::Entity_CreateHair(
 		const std::string& name,
 		const XMFLOAT3& position
@@ -2230,6 +2234,7 @@ namespace wiScene
 
 		return entity;
 	}
+#endif
 	Entity Scene::Entity_CreateSound(
 		const std::string& name,
 		const std::string& filename,
@@ -3109,7 +3114,7 @@ OPTICK_EVENT();
 		}
 	}
 #endif
-
+#ifndef GGREDUCED
 	void Scene::RunSpringUpdateSystem(wiJobSystem::context& ctx)
 	{
 #ifdef GGREDUCED
@@ -3203,6 +3208,8 @@ OPTICK_EVENT();
 			*((XMFLOAT3*)&transform->world._41) = spring.center_of_mass;
 		}
 	}
+#endif
+#ifndef GGREDUCED
 	void Scene::RunInverseKinematicsUpdateSystem(wiJobSystem::context& ctx)
 	{
 #ifdef GGREDUCED
@@ -3307,6 +3314,7 @@ OPTICK_EVENT();
 			}
 		}
 	}
+#endif
 	void Scene::RunArmatureUpdateSystem(wiJobSystem::context& ctx)
 	{
 #ifdef GGREDUCED
@@ -3574,6 +3582,9 @@ OPTICK_EVENT();
 
 		});
 	}
+
+#ifndef GGREDUCED
+
 	void Scene::RunImpostorUpdateSystem(wiJobSystem::context& ctx)
 	{
 #ifdef GGREDUCED
@@ -3646,6 +3657,7 @@ OPTICK_EVENT();
 			}
 		});
 	}
+#endif
 	void Scene::RunObjectUpdateSystem(wiJobSystem::context& ctx)
 	{
 #ifdef GGREDUCED
@@ -3802,7 +3814,7 @@ OPTICK_EVENT();
 							}
 						}
 					}
-
+#ifndef GGREDUCED
 					ImpostorComponent* impostor = impostors.GetComponent(object.meshID);
 					if (impostor != nullptr)
 					{
@@ -3825,7 +3837,7 @@ OPTICK_EVENT();
 						);
 						locker.unlock();
 					}
-
+#endif
 #ifndef GGREDUCED //PE: Remove all physics checks, we dont use it.
 					SoftBodyPhysicsComponent* softbody = softbodies.GetComponent(object.meshID);
 					if (softbody != nullptr)
@@ -4331,7 +4343,7 @@ OPTICK_EVENT();
 			emitter.UpdateCPU(transform, dt);
 		});
 */
-
+#ifndef GGREDUCED
 		wiJobSystem::Dispatch(ctx, (uint32_t)hairs.GetCount(), small_subtask_groupsize, [&](wiJobArgs args) {
 
 			wiHairParticle& hair = hairs[args.jobIndex];
@@ -4356,6 +4368,7 @@ OPTICK_EVENT();
 			}
 
 		});
+#endif
 	}
 	void Scene::RunWeatherUpdateSystem(wiJobSystem::context& ctx)
 	{
