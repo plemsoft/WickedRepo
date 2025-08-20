@@ -1913,9 +1913,7 @@ namespace wiScene
 		objects.Clear();
 		aabb_objects.Clear();
 		rigidbodies.Clear();
-#ifndef GGREDUCED //PE: Remove all physics checks, we dont use it.
 		softbodies.Clear();
-#endif
 		armatures.Clear();
 		lights.Clear();
 		aabb_lights.Clear();
@@ -1933,7 +1931,6 @@ namespace wiScene
 		sounds.Clear();
 		inverse_kinematics.Clear();
 		springs.Clear();
-
 		TLAS = RaytracingAccelerationStructure();
 		BVH.Clear();
 		packedDecals.clear();
@@ -1952,9 +1949,7 @@ namespace wiScene
 		objects.Merge(other.objects);
 		aabb_objects.Merge(other.aabb_objects);
 		rigidbodies.Merge(other.rigidbodies);
-#ifndef GGREDUCED //PE: Remove all physics checks, we dont use it.
 		softbodies.Merge(other.softbodies);
-#endif
 		armatures.Merge(other.armatures);
 		lights.Merge(other.lights);
 		aabb_lights.Merge(other.aabb_lights);
@@ -1972,7 +1967,6 @@ namespace wiScene
 		sounds.Merge(other.sounds);
 		inverse_kinematics.Merge(other.inverse_kinematics);
 		springs.Merge(other.springs);
-
 		bounds = AABB::Merge(bounds, other.bounds);
 	}
 
@@ -1990,9 +1984,7 @@ namespace wiScene
 		objects.Remove(entity);
 		aabb_objects.Remove(entity);
 		rigidbodies.Remove(entity);
-#ifndef GGREDUCED //PE: Remove all physics checks, we dont use it.
 		softbodies.Remove(entity);
-#endif
 		armatures.Remove(entity);
 		lights.Remove(entity);
 		aabb_lights.Remove(entity);
