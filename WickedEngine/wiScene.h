@@ -20,6 +20,8 @@
 #include <vector>
 #include <memory>
 
+#define MAX_SUBAABB 16
+
 class wiArchive;
 
 namespace wiScene
@@ -360,6 +362,11 @@ namespace wiScene
 			// Non-serialized attributes:
 			uint32_t materialIndex = 0;
 			bool active = true;
+			bool subAABBactive = false;
+			uint32_t usedAABB = 0;
+			AABB subAABB[MAX_SUBAABB];
+			size_t subAABB_index_count[MAX_SUBAABB];
+			size_t subAABB_index_offset[MAX_SUBAABB];
 		};
 		std::vector<MeshSubset> subsets;
 
@@ -874,6 +881,7 @@ namespace wiScene
 			}
 		};
 		std::vector<ShaderBoneType> boneData;
+		std::vector<XMMATRIX> boneMatrices;
 		wiGraphics::GPUBuffer boneBuffer;
 
 		void CreateRenderData();
@@ -1579,6 +1587,7 @@ namespace wiScene
 	// Returns skinned vertex position in armature local space
 	//	N : normal (out, optional)
 	XMVECTOR SkinVertex(const MeshComponent& mesh, const ArmatureComponent& armature, uint32_t index, XMVECTOR* N = nullptr);
+	XMVECTOR SkinVertex_OLD(const MeshComponent& mesh, const ArmatureComponent& armature, uint32_t index, XMVECTOR* N = nullptr);
 
 
 	// Helper that manages a global scene
@@ -1636,6 +1645,8 @@ namespace wiScene
 	//	layerMask		:	filter based on layer
 	//	scene			:	the scene that will be traced against the ray
 	PickResult Pick(const RAY& ray, uint32_t renderTypeMask = RENDERTYPE_OPAQUE, uint32_t layerMask = ~0, const Scene& scene = GetScene());
+	PickResult PickThread(const RAY& ray, uint32_t renderTypeMask = RENDERTYPE_OPAQUE, uint32_t layerMask = ~0, const Scene& scene = GetScene());
+	PickResult Pick_OLD(const RAY& ray, uint32_t renderTypeMask = RENDERTYPE_OPAQUE, uint32_t layerMask = ~0, const Scene& scene = GetScene());
 
 	struct SceneIntersectSphereResult
 	{
